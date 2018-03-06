@@ -18,14 +18,15 @@ node {
         if (env.BRANCH_NAME == 'master') {
             stage('Integration') {
                 withAWS(region: 'eu-central-1', role: 'MrJenkins') {
-                    def stack = cfnUpdate(stack: 'iac-demo-int', file: 'cfn.yaml', params: ['Environment': 'int'])
-                    echo stack
+                    def stack = cfnUpdate(stack: 'iac-demo-int', file: 'cfn.yaml', params: ['Environment': 'int', 'Version': version])
+                    echo stack.toString()
                 }
             }
+            input
             stage('Production') {
                 withAWS(region: 'eu-central-1', role: 'MrJenkins') {
-                    def stack = cfnUpdate(stack: 'iac-demo-prod', file: 'cfn.yaml', params: ['Environment': 'prod'])
-                    echo stack
+                    def stack = cfnUpdate(stack: 'iac-demo-prod', file: 'cfn.yaml', params: ['Environment': 'prod', 'Version': version])
+                    echo stack.toString()
                 }
             }
         } else {
@@ -33,13 +34,14 @@ node {
                 withAWS(region: 'eu-central-1', role: 'MrJenkins') {
                     def stackName = "iac-demo-${env.BRANCH_NAME}"
 
-                    def stack = cfnUpdate(stack: stackName, file: 'cfn.yaml', params: ['Environment': env.BRANCH_NAME])
-                    echo stack
+                    def stack = cfnUpdate(stack: stackName, file: 'cfn.yaml', params: ['Environment': env.BRANCH_NAME, 'Version': version])
+                    echo stack.toString()
 
                     try {
                         def test = sh(script: "curl http://${stack.Hostname}", returnStdout: true).trim()
                         echo test
                         // TODO test for string
+                        input 'Test successful?'
                     } finally {
                         cfnDelete(stack: stackName)
                     }

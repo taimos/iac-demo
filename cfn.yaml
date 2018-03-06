@@ -4,6 +4,9 @@ Parameters:
   Environment:
     Description: The name of the environment
     Type: String
+  Version:
+    Description: The version to deploy
+    Type: String
 Conditions:
   IsProd: !Equals [!Ref Environment, 'prod']
 Resources:
@@ -53,10 +56,23 @@ Resources:
             yum -y install nginx
 
             cat > /usr/share/nginx/html/index.html <<EOF
-            <html><body><h1><center>IaC Demo ${Environment}</center></h1></body></html>
+            <html><body><h1><center>IaC Demo ${Environment} ${Version}</center></h1></body></html>
             EOF
 
             service nginx start
+
+            cat > /etc/cloud/cloud.cfg.d/15_run_every.cfg <<EOF
+            #cloud-config
+            cloud_final_modules:
+             - rightscale_userdata
+             - scripts-per-once
+             - scripts-per-boot
+             - scripts-per-instance
+             - [scripts-user, always]
+             - keys-to-console
+             - phone-home
+             - final-message
+            EOF
   DNSRecord:
     Type: AWS::Route53::RecordSet
     Properties:
