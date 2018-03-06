@@ -59,7 +59,7 @@ Resources:
             yum -y install nginx
 
             cat > /usr/share/nginx/html/index.html <<EOF
-            <html><body><h1><center>IaC Demo ${Environment} ${Version}</center></h1></body></html>
+            <html><body><h1 style="color:green;"><center>IaC Demo ${Environment} ${Version}</center></h1></body></html>
             EOF
 
             service nginx start
