@@ -22,7 +22,7 @@ node {
                     echo stack.toString()
                 }
             }
-            input
+            input 'Test successful?'
             stage('Production') {
                 withAWS(region: 'eu-central-1', role: 'MrJenkins') {
                     def stack = cfnUpdate(stack: 'iac-demo-prod', file: 'cfn.yaml', params: ['Environment': 'prod', 'Version': version])

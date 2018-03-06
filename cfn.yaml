@@ -45,6 +45,9 @@ Resources:
           GroupSet:
             - !Ref SecurityGroup
           SubnetId: !ImportValue Taimos-Public-SubnetA
+      Tags:
+        - Key: Name
+          Value: !Sub IaC-Demo-Host-${Environment}
       UserData:
         'Fn::Base64': !Sub |
             #!/bin/bash -e
