@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Taimos IaC Demo'
+Parameters:
+  Environment:
+    Description: The name of the environment
+    Type: String
+Conditions:
+  IsProd: !Equals [!Ref Environment, 'prod']
+Resources:
+  SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Security group for Host'
+      VpcId: !ImportValue Taimos-VPC
+      Tags:
+        - Key: Name
+          Value: !Sub IaC-Demo-Host-${Environment}
+      SecurityGroupIngress:
+        - IpProtocol: icmp
+          Description: Ping access to host
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          Description: Web access to host
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          Description: SSH access to host
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+  ServerInstance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: 'ami-5652ce39'
+      InstanceType: t2.large
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: "0"
+          GroupSet:
+            - !Ref SecurityGroup
+          SubnetId: !ImportValue Taimos-Public-SubnetA
+      UserData:
+        'Fn::Base64': !Sub |
+            #!/bin/bash -e
+
+            cat > /home/ec2-user/.ssh/authorized_keys << "EOF"
+            ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC1QEQptpo9Mf0RYtAMxZk/90v+WKBYDUeP0HDaTEqgpPzXbo2c6TuKZZkgZc8wAw0vFcIhC3b5AVFhYBkxc2NMQLvzypriYU/mVHYSpY3a7sYMRir76D1uxC1GdLVbZtfrkJyrUHX5sR2eUng0y6Y7Ms60fTVJm8VjBJkbWKy2qkl+0zC2uQLo0/PhoAZiyF4qXyqWhEmp1VXppzKk4TLRh0Tdgwy6Th989oECxbyXUCjKhNGfFQv/+bmmtPg6x7177aiHl052UPQkxC1tD4oJtuBrBLUHqCioxHfzlO/WBaUeFQ9nsqpqd5TujVfimbCT8HoG4Pu8gun8KO+cYEhwd7589lRN6g8tFyH7O80Sf4dd47S3xM1ITSdcxxu0jg8j0OFYdU1zOqgXLpLoajX6cpti7G5OFBB5tSUh72eQXWub0kboBT/Efq7WhXniNcfiUinOAdDsGrqTRyYq1+Xzg8uVj8q+UdsP51E0RUxv0BTI3/dmrzwnPPjiXpFfozFwZZ5kqBD7Key13wWM7/lp/CiTg439rsccFR1XrH90VKUuq6kDgvfDBxRKzZPkFPO9UmW8LE57OICX+fc4ulQvrhLQfuyHhobn0ejTY2krGZ1WjM+zzzK+mcHijBmnxsnHqV60mtzsi3IT23vtXoGcUHjqmipgNmViAuKNUKzUTw== thorsten.hoeger
+            EOF
+
+            yum -y install nginx
+
+            cat > /usr/share/nginx/html/index.html <<EOF
+            <html><body><h1><center>IaC Demo ${Environment}</center></h1></body></html>
+            EOF
+
+            service nginx start
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: taimos.de.
+      Name: !Sub iac-demo-${Environment}.taimos.de.
+      Type: A
+      TTL: '60'
+      ResourceRecords:
+      - !GetAtt ServerInstance.PublicIp
+  RootDNSRecord:
+    Condition: IsProd
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: taimos.de.
+      Name: !Sub iac-demo.taimos.de.
+      Type: A
+      TTL: '60'
+      ResourceRecords:
+      - !GetAtt ServerInstance.PublicIp
+Outputs:
+  Hostname:
+    Description: 'The hostname of the web server'
+    Value: !Sub iac-demo-${Environment}.taimos.de
